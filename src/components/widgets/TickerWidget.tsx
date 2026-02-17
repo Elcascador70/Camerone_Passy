@@ -6,14 +6,53 @@ interface TickerWidgetProps {
     target: TargetData;
 }
 
-const TickerWidget: React.FC<TickerWidgetProps> = ({ target: _ }) => {
-    const events = [
-        { id: 1, time: '14:02', type: 'alert', text: 'Modification des CGV détectée', icon: AlertCircle, color: 'text-amber-500' },
-        { id: 2, time: '13:45', type: 'info', text: 'Nouveau dépôt de brevet INPI', icon: FileText, color: 'text-blue-400' },
-        { id: 3, time: '12:30', type: 'data', text: 'Mise à jour base WHOIS', icon: Database, color: 'text-slate-400' },
-        { id: 4, time: '11:15', type: 'info', text: 'Mention presse: Les Echos', icon: FileText, color: 'text-slate-400' },
-        { id: 5, time: '09:00', type: 'data', text: 'Scan ports serveur terminé', icon: Database, color: 'text-slate-400' },
+const TickerWidget: React.FC<TickerWidgetProps> = ({ target }) => {
+    const formatTime = (dateInput: string): string => {
+        const date = new Date(dateInput);
+        if (Number.isNaN(date.getTime())) {
+            return '--:--';
+        }
+        return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const newsEvents = target.newsFeed.slice(0, 5).map((item, index) => ({
+        id: `news-${index}`,
+        time: formatTime(item.pubDate),
+        text: `${item.source}: ${item.title}`,
+        icon: index === 0 ? AlertCircle : FileText,
+        color: index === 0 ? 'text-amber-500' : 'text-blue-400',
+    }));
+
+    const legalEvents = target.legalProfile
+        ? [
+            {
+                id: 'legal-1',
+                time: '--:--',
+                text: `SIRET: ${target.legalProfile.registrationNumber}`,
+                icon: Database,
+                color: 'text-slate-400',
+            },
+            {
+                id: 'legal-2',
+                time: '--:--',
+                text: `Dirigeant: ${target.legalProfile.principalExecutiveName ?? 'Non renseigné'}`,
+                icon: AlertCircle,
+                color: 'text-slate-400',
+            },
+        ]
+        : [];
+
+    const fallbackEvents = [
+        {
+            id: 'fallback-1',
+            time: '--:--',
+            text: `Aucune actualité remontée pour ${target.name}`,
+            icon: AlertCircle,
+            color: 'text-slate-400',
+        },
     ];
+
+    const events = newsEvents.length > 0 ? newsEvents : legalEvents.length > 0 ? legalEvents : fallbackEvents;
 
     return (
         <div className="flex flex-col h-full bg-slate-900 border border-slate-800 overflow-hidden">
@@ -40,7 +79,7 @@ const TickerWidget: React.FC<TickerWidgetProps> = ({ target: _ }) => {
             </div>
             <div className="p-2 border-t border-slate-800 bg-slate-950/30">
                 <div className="text-[10px] text-center text-slate-600 font-mono uppercase">
-                    Flux temps réel // Latence: 12ms
+                    Flux temps réel // CIBLE: {target.name.toUpperCase()}
                 </div>
             </div>
         </div>

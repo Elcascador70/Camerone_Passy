@@ -20,7 +20,7 @@ const App: React.FC = () => {
       <div className="scanlines"></div>
 
       {target ? (
-        <Dashboard target={target} onReset={handleReset} />
+        <Dashboard target={target} onReset={handleReset} onNewSearch={handleLaunch} />
       ) : (
         <Wizard onDeploy={handleLaunch} />
       )}

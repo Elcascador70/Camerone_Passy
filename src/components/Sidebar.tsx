@@ -1,16 +1,19 @@
 import React from 'react';
 import { Radar, Globe, UserSearch, FileText, Settings, LogOut, Shield } from 'lucide-react';
+import { DashboardTab } from '../types';
 
 interface SidebarProps {
     onReset: () => void;
+    activeTab: DashboardTab;
+    onTabChange: (tab: DashboardTab) => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onReset }) => {
-    const menuItems = [
-        { icon: Radar, label: 'Radar Scientifique', active: true },
-        { icon: Globe, label: 'Sentinelle Web', active: false },
-        { icon: UserSearch, label: 'Profiler Dirigeants', active: false },
-        { icon: FileText, label: 'Rapport SWOT', active: false },
+const Sidebar: React.FC<SidebarProps> = ({ onReset, activeTab, onTabChange }) => {
+    const menuItems: { icon: typeof Radar; label: DashboardTab }[] = [
+        { icon: Radar, label: 'Radar Scientifique' },
+        { icon: Globe, label: 'Sentinelle Web' },
+        { icon: UserSearch, label: 'Profiler Dirigeants' },
+        { icon: FileText, label: 'Rapport SWOT' },
     ];
 
     return (
@@ -29,7 +32,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onReset }) => {
                 {menuItems.map((item) => (
                     <button
                         key={item.label}
-                        className={`w-full flex items-center px-4 lg:px-6 py-3 border-l-2 transition-colors ${item.active
+                        onClick={() => onTabChange(item.label)}
+                        className={`w-full flex items-center px-4 lg:px-6 py-3 border-l-2 transition-colors ${activeTab === item.label
                                 ? 'border-amber-500 bg-slate-800/50 text-amber-500'
                                 : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
                             }`}

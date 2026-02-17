@@ -1,12 +1,62 @@
-import React from 'react';
-import { Search, Bell, AlertTriangle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Bell, AlertTriangle, Loader2 } from 'lucide-react';
 import { TargetData } from '../types';
+import { profileCompany } from '../services/osint/corporateProfiler';
+import { fetchTargetNews } from '../services/osint/newsAggregator';
 
 interface HeaderProps {
     target: TargetData;
+    onNewSearch: (data: TargetData) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ target }) => {
+const Header: React.FC<HeaderProps> = ({ target, onNewSearch }) => {
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searching, setSearching] = useState(false);
+
+    const handleSearch = async () => {
+        const query = searchQuery.trim();
+        if (!query || searching) return;
+
+        setSearching(true);
+        try {
+            const [companyProfile, news] = await Promise.all([
+                profileCompany(query, 'FR'),
+                fetchTargetNews(query),
+            ]);
+
+            onNewSearch({
+                id: crypto.randomUUID(),
+                name: query,
+                type: 'Multinationale',
+                targetType: 'company',
+                sector: target.sector,
+                scope: target.scope,
+                legalProfile: {
+                    officialName: companyProfile.officialName,
+                    registrationNumber: companyProfile.registrationNumber,
+                    fullAddress: companyProfile.fullAddress,
+                    principalExecutiveName: companyProfile.principalExecutiveName,
+                    legalCategoryOrNaf: companyProfile.legalCategoryOrNaf,
+                    etablissements: companyProfile.etablissements ?? [],
+                    parentCompany: companyProfile.parentCompany ?? null,
+                },
+                newsFeed: news,
+                timestamp: new Date().toISOString(),
+            });
+            setSearchQuery('');
+        } catch {
+            // Silently fail — the search stays on current target
+        } finally {
+            setSearching(false);
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            handleSearch();
+        }
+    };
+
     return (
         <header className="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-6 shrink-0 z-20">
 
@@ -14,10 +64,17 @@ const Header: React.FC<HeaderProps> = ({ target }) => {
             <div className="flex-1 max-w-xl">
                 <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Search className="h-4 w-4 text-slate-500 group-focus-within:text-amber-500 transition-colors" />
+                        {searching
+                            ? <Loader2 className="h-4 w-4 text-amber-500 animate-spin" />
+                            : <Search className="h-4 w-4 text-slate-500 group-focus-within:text-amber-500 transition-colors" />
+                        }
                     </div>
                     <input
                         type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        disabled={searching}
                         className="block w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-sm pl-10 pr-3 py-2.5 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 placeholder-slate-600 font-mono"
                         placeholder={`RECHERCHE INTRA-DOSSIER : ${target.name.toUpperCase()}...`}
                     />

@@ -5,12 +5,21 @@
  * - https://recherche-entreprises.api.gouv.fr
  */
 
+export interface CorporateProfileEtablissement {
+  siret: string;
+  adresse: string;
+  ville: string;
+  actif: boolean;
+}
+
 export interface CorporateProfile {
   officialName: string;
   registrationNumber: string;
   fullAddress: string;
   principalExecutiveName: string | null;
   legalCategoryOrNaf: string | null;
+  etablissements: CorporateProfileEtablissement[];
+  parentCompany: string | null;
   source: "api-gouv-recherche-entreprises";
 }
 
@@ -46,11 +55,21 @@ interface ApiDirigeant {
   prenoms?: string | null;
   denomination?: string | null;
   qualite?: string | null;
+  type_dirigeant?: string | null;
 }
 
 interface ApiSiege {
   siret?: string | null;
   adresse?: string | null;
+}
+
+interface ApiEtablissement {
+  siret?: string | null;
+  adresse?: string | null;
+  est_siege?: boolean | null;
+  etat_administratif?: string | null;
+  libelle_commune?: string | null;
+  activite_principale?: string | null;
 }
 
 interface ApiCompany {
@@ -61,6 +80,7 @@ interface ApiCompany {
   nature_juridique?: string | null;
   siege?: ApiSiege | null;
   dirigeants?: ApiDirigeant[] | null;
+  matching_etablissements?: ApiEtablissement[] | null;
 }
 
 interface ApiSearchResponse {
@@ -121,8 +141,6 @@ export async function profileCompany(
   url.searchParams.set("q", normalizedQuery);
   url.searchParams.set("page", "1");
   url.searchParams.set("per_page", "5");
-  url.searchParams.set("minimal", "true");
-  url.searchParams.set("include", "siege,dirigeants");
 
   try {
     const response = await fetch(url.toString(), {
@@ -208,12 +226,17 @@ export async function profileCompany(
       );
     }
 
+    const etablissements = extractEtablissements(selected.matching_etablissements);
+    const parentCompany = findParentCompany(selected.dirigeants);
+
     return {
       officialName,
       registrationNumber,
       fullAddress,
       principalExecutiveName,
       legalCategoryOrNaf,
+      etablissements,
+      parentCompany,
       source: "api-gouv-recherche-entreprises",
     };
   } catch (error) {
@@ -295,6 +318,30 @@ function scoreExecutiveRole(role: string | null | undefined): number {
     }
   }
   return 0;
+}
+
+function extractEtablissements(
+  raw: ApiEtablissement[] | null | undefined
+): CorporateProfileEtablissement[] {
+  if (!raw?.length) return [];
+  return raw
+    .filter((e) => !e.est_siege && e.siret && e.adresse)
+    .map((e) => ({
+      siret: e.siret!.trim(),
+      adresse: e.adresse!.trim(),
+      ville: e.libelle_commune?.trim() ?? "",
+      actif: e.etat_administratif === "A",
+    }));
+}
+
+function findParentCompany(
+  dirigeants: ApiDirigeant[] | null | undefined
+): string | null {
+  if (!dirigeants?.length) return null;
+  const moral = dirigeants.find(
+    (d) => d.denomination?.trim()
+  );
+  return moral?.denomination?.trim() ?? null;
 }
 
 function normalize(value: string): string {

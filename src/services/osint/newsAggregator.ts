@@ -86,8 +86,10 @@ export async function fetchTargetNewsStrict(
   rssUrl.searchParams.set("gl", "FR");
   rssUrl.searchParams.set("ceid", "FR:fr");
 
+  const proxiedUrl = `https://corsproxy.io/?${encodeURIComponent(rssUrl.toString())}`;
+
   try {
-    const response = await fetch(rssUrl.toString(), {
+    const response = await fetch(proxiedUrl, {
       method: "GET",
       headers: {
         Accept: "application/rss+xml, application/xml, text/xml",

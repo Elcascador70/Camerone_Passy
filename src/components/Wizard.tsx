@@ -1,35 +1,102 @@
 import React, { useState } from 'react';
-import { Target, Briefcase, Globe, ArrowRight, ShieldAlert } from 'lucide-react';
-import { Sector, Range, TargetData } from '../types';
+import { Target, Briefcase, Globe, ArrowRight, ShieldAlert, ChevronDown, Building2, User } from 'lucide-react';
+import { Range, TargetData } from '../types';
+import { profileCompany, CorporateProfilerError } from '../services/osint/corporateProfiler';
+import { fetchTargetNews } from '../services/osint/newsAggregator';
 
 interface WizardProps {
     onDeploy: (data: TargetData) => void;
 }
 
+const SECTORS_LIST = [
+    'Défense', 'Renseignement', 'Technologie', 'Finance', 'Politique',
+    'Médias', 'BTP', 'Santé', 'Industrie', 'ONG',
+    'Luxe', 'Automobile', 'Aéronautique', 'Énergie',
+    'Télécoms', 'Transports', 'Agroalimentaire', 'Grande Distribution', 'Services'
+];
+
 const Wizard: React.FC<WizardProps> = ({ onDeploy }) => {
+    const [targetType, setTargetType] = useState<'company' | 'person'>('company');
     const [name, setName] = useState('');
-    const [sector, setSector] = useState<Sector>(Sector.TECH);
+    const [sector, setSector] = useState<string>('');
     const [range, setRange] = useState<Range>(Range.NATIONAL);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [showSectorList, setShowSectorList] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name.trim()) return;
+        const normalizedName = name.trim();
+        if (!normalizedName) return;
 
+        setError(null);
         setLoading(true);
-        // Simulate system initialization delay
-        setTimeout(() => {
+        try {
+            let profile: any = {
+                officialName: normalizedName,
+                registrationNumber: 'N/A',
+                fullAddress: 'Adresse inconnue',
+                principalExecutiveName: 'N/A',
+                legalCategoryOrNaf: 'Non défini'
+            };
+            let newsFeed: any[] = [];
+
+            if (targetType === 'company') {
+                try {
+                    const [companyProfile, news] = await Promise.all([
+                        profileCompany(normalizedName, 'FR'),
+                        fetchTargetNews(normalizedName),
+                    ]);
+                    profile = companyProfile;
+                    newsFeed = news;
+                } catch (profileErr: any) {
+                    // If mocking/demo, we might want to proceed anyway, but sticking to existing logic implies errors stop flow.
+                    // However, for 'person', we skip profiling.
+                    throw profileErr;
+                }
+            } else {
+                const [news] = await Promise.all([
+                    fetchTargetNews(normalizedName),
+                ]);
+                newsFeed = news;
+            }
+
             onDeploy({
-                id: crypto.randomUUID(), // Maquette didn't have ID but my types might need it? Maquette types.ts didn't have ID. My updated types.ts HAS ID. I'll generate one.
-                name,
-                type: 'PME', // Defaulting as maquette doesn't have type input
-                sector,
+                id: crypto.randomUUID(),
+                name: normalizedName,
+                type: targetType === 'company' ? 'Multinationale' : 'Personne Physique',
+                targetType,
+                sector: sector || 'Non défini',
                 scope: range,
-                legalProfile: null,
-                newsFeed: [],
+                legalProfile: {
+                    officialName: profile.officialName,
+                    registrationNumber: profile.registrationNumber,
+                    fullAddress: profile.fullAddress,
+                    principalExecutiveName: profile.principalExecutiveName,
+                    legalCategoryOrNaf: profile.legalCategoryOrNaf,
+                    etablissements: profile.etablissements ?? [],
+                    parentCompany: profile.parentCompany ?? null,
+                },
+                newsFeed,
                 timestamp: new Date().toISOString()
             });
-        }, 1200);
+        } catch (err: any) {
+            if (err instanceof CorporateProfilerError) {
+                const messages: Record<string, string> = {
+                    TARGET_NOT_FOUND: `Aucune entreprise trouvée pour "${normalizedName}".`,
+                    NETWORK_ERROR: 'Erreur réseau. Vérifiez votre connexion internet.',
+                    HTTP_ERROR: 'Le service de données est temporairement indisponible.',
+                    BAD_INPUT: 'Le nom de la cible est invalide.',
+                    UNSUPPORTED_COUNTRY: 'Seules les entreprises françaises sont supportées.',
+                    INVALID_RESPONSE: 'Réponse inattendue du service de données.',
+                };
+                setError(messages[err.code] ?? err.message);
+            } else {
+                setError(err.message || 'Une erreur inattendue est survenue.');
+            }
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -66,6 +133,32 @@ const Wizard: React.FC<WizardProps> = ({ onDeploy }) => {
 
                     <div className="space-y-6">
 
+                        {/* Type Toggle */}
+                        <div className="grid grid-cols-2 gap-1 bg-slate-950 p-1 border border-slate-800 rounded-sm">
+                            <button
+                                type="button"
+                                onClick={() => setTargetType('company')}
+                                className={`flex items-center justify-center py-2 text-xs font-bold uppercase tracking-wider transition-all rounded-sm ${targetType === 'company'
+                                        ? 'bg-amber-500 text-slate-950 shadow-lg'
+                                        : 'text-slate-500 hover:text-slate-300'
+                                    }`}
+                            >
+                                <Building2 className="w-3 h-3 mr-2" />
+                                Entité Légale
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setTargetType('person')}
+                                className={`flex items-center justify-center py-2 text-xs font-bold uppercase tracking-wider transition-all rounded-sm ${targetType === 'person'
+                                        ? 'bg-amber-500 text-slate-950 shadow-lg'
+                                        : 'text-slate-500 hover:text-slate-300'
+                                    }`}
+                            >
+                                <User className="w-3 h-3 mr-2" />
+                                Personne Physique
+                            </button>
+                        </div>
+
                         {/* Step 1: Name */}
                         <div className="space-y-2">
                             <label className="flex items-center text-xs font-bold text-slate-400 uppercase tracking-wider">
@@ -76,32 +169,53 @@ const Wizard: React.FC<WizardProps> = ({ onDeploy }) => {
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                placeholder="NOM DE L'ENTITÉ OU DU DIRIGEANT"
+                                placeholder={targetType === 'company' ? "NOM DE L'ENTITÉ" : "NOM PRENOM"}
                                 className="w-full bg-slate-950 border border-slate-700 text-slate-200 p-3 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-700 transition-all font-mono"
                                 autoFocus
                             />
                         </div>
 
-                        {/* Step 2: Sector */}
-                        <div className="space-y-2">
+                        {/* Step 2: Sector (Flexible) */}
+                        <div className="space-y-2 relative">
                             <label className="flex items-center text-xs font-bold text-slate-400 uppercase tracking-wider">
                                 <Briefcase className="w-3 h-3 mr-2 text-amber-500" />
                                 Secteur d'Activité
                             </label>
                             <div className="relative">
-                                <select
+                                <input
+                                    type="text"
                                     value={sector}
-                                    onChange={(e) => setSector(e.target.value as Sector)}
-                                    className="w-full bg-slate-950 border border-slate-700 text-slate-200 p-3 text-sm focus:border-amber-500 focus:outline-none appearance-none font-mono"
-                                >
-                                    {Object.values(Sector).map((s) => (
-                                        <option key={s} value={s}>{s}</option>
-                                    ))}
-                                </select>
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                                </div>
+                                    onChange={(e) => {
+                                        setSector(e.target.value);
+                                        setShowSectorList(true);
+                                    }}
+                                    onClick={() => setShowSectorList(true)}
+                                    placeholder="SÉLECTIONNER OU SAISIR..."
+                                    className="w-full bg-slate-950 border border-slate-700 text-slate-200 p-3 text-sm focus:border-amber-500 focus:outline-none font-mono placeholder-slate-700"
+                                />
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+
+                                {showSectorList && (
+                                    <div className="absolute z-50 w-full mt-1 bg-slate-900 border border-slate-700 max-h-48 overflow-y-auto shadow-xl scrollbar-thin scrollbar-thumb-slate-600">
+                                        {SECTORS_LIST.filter(s => s.toLowerCase().includes(sector.toLowerCase())).map((s) => (
+                                            <div
+                                                key={s}
+                                                className="px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 cursor-pointer font-mono hover:text-amber-500 transition-colors"
+                                                onClick={() => {
+                                                    setSector(s);
+                                                    setShowSectorList(false);
+                                                }}
+                                            >
+                                                {s}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
+                            {/* Backdrop to close list */}
+                            {showSectorList && (
+                                <div className="fixed inset-0 z-40" onClick={() => setShowSectorList(false)}></div>
+                            )}
                         </div>
 
                         {/* Step 3: Range */}
@@ -117,8 +231,8 @@ const Wizard: React.FC<WizardProps> = ({ onDeploy }) => {
                                         type="button"
                                         onClick={() => setRange(r)}
                                         className={`text-[10px] uppercase font-bold py-2 px-1 border transition-all ${range === r
-                                                ? 'bg-amber-500/10 border-amber-500 text-amber-500'
-                                                : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-600'
+                                            ? 'bg-amber-500/10 border-amber-500 text-amber-500'
+                                            : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-600'
                                             }`}
                                     >
                                         {r.split(' ')[0]}
@@ -126,6 +240,12 @@ const Wizard: React.FC<WizardProps> = ({ onDeploy }) => {
                                 ))}
                             </div>
                         </div>
+
+                        {error && (
+                            <div className="p-3 bg-red-900/20 border border-red-900/50 text-red-400 text-xs font-mono">
+                                <span className="font-bold text-red-500">ERREUR:</span> {error}
+                            </div>
+                        )}
 
                         {/* Action Button */}
                         <button
