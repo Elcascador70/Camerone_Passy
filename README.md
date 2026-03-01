@@ -1,73 +1,115 @@
-# React + TypeScript + Vite
+# Camerone Passy - OSINT Intelligence Suite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Dashboard OSINT (Open Source Intelligence) construit avec React + TypeScript + Vite + Tailwind CSS v4.
 
-Currently, two official plugins are available:
+## Requirements
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Node.js (version 18 or higher)
+- npm (version 9 or higher)
 
-## React Compiler
+## Installation
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. Clone the repository
+2. Run `npm ci` to install dependencies
+3. Create a `.env` file in the root directory with the required API keys (Firebase, Groq)
+4. Run `npm run dev` to start the development server
 
-## Expanding the ESLint configuration
+## Variables d'environnement
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+| Variable | Description |
+|---|---|
+| `VITE_FIREBASE_*` | Configuration Firebase (apiKey, authDomain, projectId, etc.) |
+| `VITE_GROQ_API_KEY` | Clé API Groq pour le module FININT (Llama-3.3-70B) |
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Scripts
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- `npm run dev` - Start development server
+- `npm run build` - Type-check and build for production
+- `npm run preview` - Preview production build
+- `npm run lint` - Run ESLint
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Tech Stack
+
+- **React 19** + **TypeScript**
+- **Vite 7** (build tool)
+- **Tailwind CSS v4** (via `@tailwindcss/postcss`)
+- **Firebase** (backend services)
+- **Recharts** (data visualization)
+- **Lucide React** (icons)
+
+## Project Structure
+
+```
+src/
+├── assets/            # Static assets (SVGs, images)
+├── components/        # UI components
+│   ├── widgets/       # Dashboard widget components
+│   │   ├── AiReportWidget.tsx   # Profiler IA (analyse psychologique LLM)
+│   │   ├── CyberWidget.tsx      # CYBINT — DNS + WHOIS/RDAP
+│   │   ├── FinanceWidget.tsx    # FININT — Briefing financier IA
+│   │   ├── GeoWidget.tsx        # GEOINT — Géolocalisation OSM
+│   │   ├── MapWidget.tsx        # Carte établissements
+│   │   ├── OverviewWidget.tsx   # Vue globale (tableau de bord)
+│   │   ├── ReputationWidget.tsx # Score de réputation
+│   │   ├── SocialWidget.tsx     # SOCMINT — Réseaux sociaux
+│   │   └── TickerWidget.tsx     # Flux actualités
+│   ├── Dashboard.tsx  # Main dashboard (routing par onglets)
+│   ├── Header.tsx     # App header
+│   ├── Sidebar.tsx    # Navigation sidebar (8 onglets)
+│   └── Wizard.tsx     # Wizard de déploiement (Entité / Personne)
+├── services/          # API & backend services
+│   ├── osint/         # OSINT data modules
+│   │   ├── corporateProfiler.ts  # Profil légal (API Sirene)
+│   │   ├── cyberIntel.ts         # DNS-over-HTTPS + RDAP
+│   │   ├── financialIntel.ts     # Briefing FININT via Groq LLM
+│   │   ├── geoIntel.ts           # Géocodage Nominatim
+│   │   ├── mindReader.ts         # Profilage psychologique LLM
+│   │   ├── newsAggregator.ts     # Agrégation actualités
+│   │   └── socialScanner.ts      # DuckDuckGo Dorking SOCMINT
+│   ├── db.ts          # Database service
+│   └── firebaseConfig.ts
+├── types.ts           # TypeScript type definitions
+├── App.tsx            # Root component
+├── App.css            # App-level styles
+├── index.css          # Global styles + Tailwind
+└── main.tsx           # Entry point
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Modules OSINT
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+| Module | Source | Statut |
+|---|---|---|
+| **Identité & Légal** | API Sirene (INSEE) | :white_check_mark: Livré |
+| **Sentinelle Médias** | Google News RSS (via proxy) | :white_check_mark: Livré |
+| **SOCMINT** | DuckDuckGo Lite Dorking (LinkedIn, Twitter/X, Facebook, Instagram) | :white_check_mark: Livré |
+| **CYBINT** | Google DNS-over-HTTPS + RDAP (via corsproxy) | :white_check_mark: Livré |
+| **FININT** | Groq LLM (Llama-3.3-70B) — analyse signaux faibles | :white_check_mark: Livré |
+| **GEOINT** | OpenStreetMap Nominatim | :white_check_mark: Livré |
+| **Profiler IA** | Groq LLM — profilage psychologique | :white_check_mark: Livré |
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Backlog
+
+### Livré (v2.1)
+
+- [x] Intégration Tailwind v4 + réparation Recharts
+- [x] Wizard de déploiement avec toggle Entité Légale / Personne Physique
+- [x] Champ domaine web optionnel dans le Wizard
+- [x] Sélecteur de secteur libre (input + suggestions)
+- [x] Dashboard 8 onglets avec navigation Sidebar
+- [x] Vue Globale (OverviewWidget) — statut temps réel de chaque domaine OSINT
+- [x] Module SOCMINT — scan réseaux sociaux via DuckDuckGo Dorking
+- [x] Module CYBINT — records DNS (A, AAAA, MX, NS, TXT, CNAME) + WHOIS/RDAP
+- [x] Module FININT — briefing financier IA (risques, opportunités, métriques clés)
+- [x] Module GEOINT — géolocalisation sur carte OpenStreetMap (dark mode)
+- [x] Types TypeScript complets pour tous les modules OSINT
+
+### En cours / Prochaines étapes
+
+- [ ] Scraping OSINT profond — Comex complet (organigramme dirigeants)
+- [ ] Enrichissement SOCMINT — extraction de contenu des profils sociaux
+- [ ] Module HUMINT — réseau relationnel et cartographie des connexions
+- [ ] Export PDF du rapport complet
+- [ ] Historique des recherches (Firebase Firestore)
+- [ ] Authentification utilisateur (Firebase Auth)
+- [ ] Alertes temps réel (monitoring continu d'une cible)
+- [ ] Code splitting / lazy loading des widgets pour optimiser le bundle

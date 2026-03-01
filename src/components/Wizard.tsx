@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Target, Briefcase, Globe, ArrowRight, ShieldAlert, ChevronDown, Building2, User } from 'lucide-react';
+import { Target, Briefcase, Globe, ArrowRight, ShieldAlert, ChevronDown, Building2, User, Link2 } from 'lucide-react';
 import { Range, TargetData } from '../types';
 import { profileCompany, CorporateProfilerError } from '../services/osint/corporateProfiler';
 import { fetchTargetNews } from '../services/osint/newsAggregator';
@@ -18,6 +18,7 @@ const SECTORS_LIST = [
 const Wizard: React.FC<WizardProps> = ({ onDeploy }) => {
     const [targetType, setTargetType] = useState<'company' | 'person'>('company');
     const [name, setName] = useState('');
+    const [domain, setDomain] = useState('');
     const [sector, setSector] = useState<string>('');
     const [range, setRange] = useState<Range>(Range.NATIONAL);
     const [loading, setLoading] = useState(false);
@@ -68,6 +69,7 @@ const Wizard: React.FC<WizardProps> = ({ onDeploy }) => {
                 targetType,
                 sector: sector || 'Non défini',
                 scope: range,
+                domain: domain.trim() || undefined,
                 legalProfile: {
                     officialName: profile.officialName,
                     registrationNumber: profile.registrationNumber,
@@ -175,7 +177,24 @@ const Wizard: React.FC<WizardProps> = ({ onDeploy }) => {
                             />
                         </div>
 
-                        {/* Step 2: Sector (Flexible) */}
+                        {/* Step 2: Domain (Optional) */}
+                        {targetType === 'company' && (
+                            <div className="space-y-2">
+                                <label className="flex items-center text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                    <Link2 className="w-3 h-3 mr-2 text-amber-500" />
+                                    Domaine Web <span className="text-slate-600 ml-1 normal-case">(optionnel)</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={domain}
+                                    onChange={(e) => setDomain(e.target.value)}
+                                    placeholder="exemple.fr"
+                                    className="w-full bg-slate-950 border border-slate-700 text-slate-200 p-3 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-700 transition-all font-mono"
+                                />
+                            </div>
+                        )}
+
+                        {/* Step 3: Sector (Flexible) */}
                         <div className="space-y-2 relative">
                             <label className="flex items-center text-xs font-bold text-slate-400 uppercase tracking-wider">
                                 <Briefcase className="w-3 h-3 mr-2 text-amber-500" />
